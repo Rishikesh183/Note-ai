@@ -37,9 +37,13 @@ export async function PATCH(
     return Response.json({ ok: true })
   }
 
-  /* Auto-generate preview from content diff */
+  /* Auto-generate preview — strip HTML tags */
   if (typeof patch.content === 'string') {
-    patch.preview = (patch.content as string).replace(/[#*_`[\]]/g, '').slice(0, 120)
+    patch.preview = (patch.content as string)
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 120)
   }
 
   patch.updatedAt = FieldValue.serverTimestamp()

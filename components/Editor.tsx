@@ -4,6 +4,17 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { MoreHorizontal, Star, Share2, PanelLeft, Sparkles, Clock } from 'lucide-react'
 import { useUser, SignInButton, UserButton } from '@clerk/nextjs'
+import { useEditor, EditorContent } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import { TextStyle } from '@tiptap/extension-text-style'
+import Color from '@tiptap/extension-color'
+import Highlight from '@tiptap/extension-highlight'
+import { Table } from '@tiptap/extension-table'
+import TableRow from '@tiptap/extension-table-row'
+import TableCell from '@tiptap/extension-table-cell'
+import TableHeader from '@tiptap/extension-table-header'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
 import FloatingToolbar from './FloatingToolbar'
 import SaveStatusIndicator from './SaveStatus'
 import { useAutosave } from '@/hooks/useAutosave'
@@ -18,6 +29,10 @@ interface EditorProps {
   sidebarOpen: boolean
 }
 
+function stripHtml(html: string) {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggleSidebar, sidebarOpen }: EditorProps) {
   const { isSignedIn } = useUser()
   const { local, save, status } = useAutosave(
@@ -27,6 +42,33 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
   )
   const [starred, setStarred] = useState(note.favorite)
   const titleRef = useRef<HTMLTextAreaElement>(null)
+  const localTitleRef = useRef(local.title)
+  localTitleRef.current = local.title
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      TextStyle,
+      Color,
+      Highlight.configure({ multicolor: true }),
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
+      TaskList,
+      TaskItem.configure({ nested: true }),
+    ],
+    immediatelyRender: false,
+    content: local.content,
+    editorProps: {
+      attributes: { class: 'tiptap-content' },
+    },
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML()
+      save({ content: html })
+      onNoteUpdated(note.id, { title: localTitleRef.current, content: html })
+    },
+  })
 
   useEffect(() => {
     const el = titleRef.current
@@ -38,20 +80,15 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
   const handleTitleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       save({ title: e.target.value })
-      onNoteUpdated(note.id, { title: e.target.value, content: local.content })
+      onNoteUpdated(note.id, { title: e.target.value, content: localTitleRef.current })
     },
-    [note.id, local.content, save, onNoteUpdated]
+    [note.id, save, onNoteUpdated]
   )
 
-  const handleContentChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      save({ content: e.target.value })
-      onNoteUpdated(note.id, { title: local.title, content: e.target.value })
-    },
-    [note.id, local.title, save, onNoteUpdated]
-  )
-
-  const wordCount = local.content.trim() ? local.content.trim().split(/\s+/).length : 0
+  const wordCount = (() => {
+    const text = stripHtml(local.content)
+    return text ? text.split(/\s+/).length : 0
+  })()
 
   return (
     <motion.div
@@ -110,7 +147,7 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
       </div>
 
       {/* Format toolbar */}
-      <FloatingToolbar />
+      <FloatingToolbar editor={editor} />
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
@@ -130,12 +167,7 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
             <div className="h-px flex-1 bg-linear-to-l from-(--border-dim) to-transparent" />
           </div>
 
-          <textarea
-            value={local.content}
-            onChange={handleContentChange}
-            placeholder={`Start writing your thoughts here...\n\nMarkdown is welcome — use # for headings, **bold**, _italic_, and more.`}
-            className="w-full bg-transparent text-[14.5px] t-secondary resize-none outline-none leading-[1.85] min-h-115 font-sans"
-          />
+          <EditorContent editor={editor} className="w-full" />
         </div>
       </div>
 

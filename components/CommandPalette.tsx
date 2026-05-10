@@ -6,13 +6,13 @@ import { Search, FileText, Plus, Sparkles, Clock, Trash2, Settings, ArrowRight, 
 import { Note } from '@/lib/mock-data'
 
 const QUICK_ACTIONS = [
-  { icon: Plus,     label: 'New Note',        mac: '⌘N',    win: 'Ctrl+N',       color: 'text-violet-400',    action: 'new' },
-  { icon: Sparkles, label: 'Ask AI',           mac: '⌘⇧A',  win: 'Ctrl+Shift+A', color: 'text-indigo-400',    action: null  },
-  { icon: Star,     label: 'View Favorites',   mac: '⌘2',   win: 'Ctrl+2',       color: 'text-amber-400/80',  action: null  },
-  { icon: Clock,    label: 'Recent Notes',     mac: '⌘4',   win: 'Ctrl+4',       color: 'text-blue-400/80',   action: null  },
-  { icon: Hash,     label: 'Browse Tags',      mac: '⌘T',   win: 'Ctrl+T',       color: 'text-green-400/70',  action: null  },
-  { icon: Trash2,   label: 'Trash',            mac: '⌘⌫',  win: 'Ctrl+Del',     color: 'text-red-400/60',    action: null  },
-  { icon: Settings, label: 'Settings',         mac: '⌘,',   win: 'Ctrl+,',       color: 'text-violet-300/50', action: null  },
+  { icon: Plus,     label: 'New Note',        mac: '⌥N',    win: 'Alt+N',   color: 'text-violet-400',    action: 'new' },
+  { icon: Sparkles, label: 'Ask AI',           mac: '⌘K AI', win: 'Ctrl+K',  color: 'text-indigo-400',    action: null  },
+  { icon: Star,     label: 'View Favorites',   mac: '⌘K ★',  win: 'Ctrl+K',  color: 'text-amber-400/80',  action: null  },
+  { icon: Clock,    label: 'Recent Notes',     mac: '⌘K',    win: 'Ctrl+K',  color: 'text-blue-400/80',   action: null  },
+  { icon: Hash,     label: 'Browse Tags',      mac: '⌘K',    win: 'Ctrl+K',  color: 'text-green-400/70',  action: null  },
+  { icon: Trash2,   label: 'Trash',            mac: '⌘K',    win: 'Ctrl+K',  color: 'text-red-400/60',    action: null  },
+  { icon: Settings, label: 'Settings',         mac: '⌘K',    win: 'Ctrl+K',  color: 'text-violet-300/50', action: null  },
 ]
 
 interface CommandPaletteProps {
@@ -38,8 +38,6 @@ export default function CommandPalette({ onClose, notes, onSelectNote, onNewNote
     a.label.toLowerCase().includes(query.toLowerCase())
   )
   const totalItems = filteredActions.length + filteredNotes.length
-
-  useEffect(() => { setSelected(0) }, [query])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -87,7 +85,7 @@ export default function CommandPalette({ onClose, notes, onSelectNote, onNewNote
                 type="text"
                 placeholder="Search notes or run a command..."
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => { setQuery(e.target.value); setSelected(0) }}
                 className="flex-1 bg-transparent text-[13.5px] t-primary outline-none"
               />
               <kbd className="text-[10px] font-mono t-muted surface border border-dim px-1.5 py-0.5 rounded-md shrink-0">ESC</kbd>

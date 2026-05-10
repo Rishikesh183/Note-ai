@@ -14,13 +14,16 @@ interface NoteCardProps {
 
 export default function NoteCard({ note, selected, onClick, onDelete }: NoteCardProps) {
   return (
-    <motion.button
+    <motion.div
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && onClick()}
       whileHover={{ scale: 1.008 }}
       whileTap={{ scale: 0.995 }}
       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
       className={cn(
-        'w-full text-left px-3.5 py-3 rounded-xl mb-0.5 transition-all duration-200 relative group border',
+        'w-full text-left px-3.5 py-3 rounded-xl mb-0.5 transition-all duration-200 relative group border cursor-pointer',
         selected
           ? 'bg-violet-500/9 border-violet-500/18 shadow-[0_0_20px_rgba(124,106,247,0.07)]'
           : 'border-transparent note-card-hover border-dim'
@@ -68,6 +71,6 @@ export default function NoteCard({ note, selected, onClick, onDelete }: NoteCard
           <span className="text-[10px] t-muted">{note.wordCount.toLocaleString()} w</span>
         ) : null}
       </div>
-    </motion.button>
+    </motion.div>
   )
 }

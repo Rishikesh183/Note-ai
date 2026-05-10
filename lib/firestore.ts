@@ -90,7 +90,7 @@ export function useNotes(userId: string | null | undefined) {
         return {
           ...n,
           ...data,
-          preview: content.replace(/[#*_`[\]]/g, '').slice(0, 120),
+          preview: content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120),
           updatedAt: 'Just now',
           wordCount: content.trim() ? content.trim().split(/\s+/).length : 0,
         }

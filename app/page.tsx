@@ -25,18 +25,31 @@ export default function Page() {
   const [searchQuery, setSearchQuery] = useState('')
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
 
-  /* Keyboard: Cmd+K */
+  const handleNewNote = useCallback(async () => {
+    const note = await createNote()
+    if (!note) return
+    setSelectedNoteId(note.id)
+    setActiveNav('all')
+    setSearchQuery('')
+  }, [createNote])
+
+  /* Keyboard shortcuts */
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
         setCommandPaletteOpen((o) => !o)
       }
+      /* Alt+N / ⌥N — new note (avoids browser-reserved Ctrl+N) */
+      if (e.altKey && e.key === 'n') {
+        e.preventDefault()
+        handleNewNote()
+      }
       if (e.key === 'Escape') setCommandPaletteOpen(false)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [handleNewNote])
 
   const filteredNotes = notes.filter((note) => {
     if (activeNav === 'favorites') return note.favorite
@@ -47,14 +60,6 @@ export default function Page() {
     }
     return true
   })
-
-  const handleNewNote = useCallback(async () => {
-    const note = await createNote()
-    if (!note) return
-    setSelectedNoteId(note.id)
-    setActiveNav('all')
-    setSearchQuery('')
-  }, [createNote])
 
   const handleToggleFavorite = useCallback(
     (id: string, current: boolean) => toggleFavorite(id, current),
