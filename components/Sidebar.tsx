@@ -29,6 +29,7 @@ interface SidebarProps {
 export default function Sidebar({
   open, onToggle, activeNav, onNavChange, onNewNote, onOpenCommandPalette,
 }: SidebarProps) {
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
   return (
     <motion.aside
       initial={false}
@@ -79,7 +80,8 @@ export default function Sidebar({
             open ? 'px-2.5 py-2' : 'justify-center p-2'
           )}
         >
-          <Command size={12} className="shrink-0" />
+          {isMac ? <Command size={12} className="shrink-0" /> : <span className="text-[10px] font-mono"></span>}
+          {/* <Command size={12} className="shrink-0" /> */}
           <AnimatePresence>
             {open && (
               <motion.span
@@ -88,11 +90,11 @@ export default function Sidebar({
                 exit={{ opacity: 0 }}
                 className="text-[11.5px] flex-1 text-left"
               >
-                Command
+                Commands
               </motion.span>
             )}
           </AnimatePresence>
-          {open && <kbd className="text-[9.5px] font-mono t-muted tracking-tighter">⌘K</kbd>}
+          {open && <kbd className="text-[9.5px] font-mono t-muted tracking-tighter">{isMac ? '⌘K' : 'Ctrl+K'}</kbd>}
         </button>
       </div>
 
