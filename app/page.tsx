@@ -8,6 +8,7 @@ import Sidebar from '@/components/Sidebar'
 import NotesList from '@/components/NotesList'
 import Editor from '@/components/Editor'
 import CommandPalette from '@/components/CommandPalette'
+import AiWorkspace from '@/components/ai/AiWorkspace'
 import { useNotes } from '@/lib/firestore'
 import { NavItem } from '@/lib/mock-data'
 
@@ -40,7 +41,6 @@ export default function Page() {
         e.preventDefault()
         setCommandPaletteOpen((o) => !o)
       }
-      /* Alt+N / ⌥N — new note (avoids browser-reserved Ctrl+N) */
       if (e.altKey && e.key === 'n') {
         e.preventDefault()
         handleNewNote()
@@ -177,16 +177,27 @@ export default function Page() {
       />
 
       <div className="flex flex-1 overflow-hidden min-w-0">
-        <NotesList
-          notes={filteredNotes}
-          selectedNote={selectedNote}
-          onSelectNote={(n) => setSelectedNoteId(n.id)}
-          onDeleteNote={handleDeleteNote}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          activeNav={activeNav}
-          onNewNote={handleNewNote}
-        />
+        {/* AI Workspace replaces NotesList when activeNav === 'ai' */}
+        {activeNav === 'ai' ? (
+          <AiWorkspace
+            notes={notes}
+            onSelectNote={(n) => {
+              setSelectedNoteId(n.id)
+              setActiveNav('all')
+            }}
+          />
+        ) : (
+          <NotesList
+            notes={filteredNotes}
+            selectedNote={selectedNote}
+            onSelectNote={(n) => setSelectedNoteId(n.id)}
+            onDeleteNote={handleDeleteNote}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            activeNav={activeNav}
+            onNewNote={handleNewNote}
+          />
+        )}
 
         <AnimatePresence mode="wait">
           {selectedNote ? (

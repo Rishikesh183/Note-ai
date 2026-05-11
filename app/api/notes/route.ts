@@ -19,6 +19,7 @@ function formatNote(id: string, data: FirebaseFirestore.DocumentData) {
     content,
     preview:   data.preview  ?? content.replace(/[#*_`[\]]/g, '').slice(0, 120),
     favorite:  data.favorite ?? false,
+    public:    data.public   ?? false,
     category:  data.category ?? 'all',
     wordCount: content.trim() ? content.trim().split(/\s+/).length : 0,
     updatedAt: updatedAt.toISOString(),

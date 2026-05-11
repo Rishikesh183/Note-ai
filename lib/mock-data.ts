@@ -7,6 +7,7 @@ export interface Note {
   favorite: boolean
   category: string
   wordCount?: number
+  public?: boolean
 }
 
 export type NavItem = 'all' | 'favorites' | 'ai' | 'recent' | 'trash'

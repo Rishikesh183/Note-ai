@@ -32,6 +32,7 @@ function ToolBtn({
   icon: React.ElementType
   label: string
 }) {
+  
   return (
     <div className="relative group">
       <button
@@ -109,7 +110,7 @@ export default function FloatingToolbar({ editor }: { editor: Editor | null }) {
   if (!editor) return null
 
   const inTable = editor.isActive('table')
-
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
   return (
     <motion.div
       initial={{ opacity: 0, y: -6 }}
@@ -153,7 +154,7 @@ export default function FloatingToolbar({ editor }: { editor: Editor | null }) {
         <ToolBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} icon={Minus} label="Divider" />
 
         <div className="w-px h-4 bg-(--border-dim) mx-1" />
-        <div className="px-2 text-[10px] t-muted font-mono tracking-tight">⌘K</div>
+        <div className="px-2 text-[10px] t-muted font-mono tracking-tight">{isMac ? '⌘K' : 'Ctrl+K'}</div>
       </div>
 
       {/* Table context toolbar — only when cursor is inside a table */}

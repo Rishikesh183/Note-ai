@@ -274,3 +274,12 @@ textarea      { resize: none; }
   color: var(--text-muted);
   font-style: italic;
 }
+
+/* AI autocomplete ghost text */
+.autocomplete-ghost {
+  color: var(--text-muted);
+  opacity: 0.5;
+  pointer-events: none;
+  font-style: italic;
+  user-select: none;
+}

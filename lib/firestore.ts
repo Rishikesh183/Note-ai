@@ -18,7 +18,7 @@ function formatTs(iso: string): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function shape(raw: any): Note {
-  return { ...raw, updatedAt: formatTs(raw.updatedAt) }
+  return { ...raw, updatedAt: formatTs(raw.updatedAt), public: raw.public ?? false }
 }
 
 export function useNotes(userId: string | null | undefined) {

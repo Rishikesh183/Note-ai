@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { MoreHorizontal, Star, Share2, PanelLeft, Sparkles, Clock } from 'lucide-react'
+import { MoreHorizontal, Star, PanelLeft, Sparkles, Clock } from 'lucide-react'
 import { useUser, SignInButton, UserButton } from '@clerk/nextjs'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -17,6 +17,10 @@ import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import FloatingToolbar from './FloatingToolbar'
 import SaveStatusIndicator from './SaveStatus'
+import SharePopover from './SharePopover'
+import AiPanel from './ai/AiPanel'
+import SelectionBubble from './ai/SelectionBubble'
+import { AutocompleteExtension, setAutocompleteEnabled } from './ai/AutocompleteExtension'
 import { useAutosave } from '@/hooks/useAutosave'
 import { Note } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
@@ -41,9 +45,17 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
     (synced) => onNoteUpdated(note.id, synced)
   )
   const [starred, setStarred] = useState(note.favorite)
+  const [isPublic, setIsPublic] = useState(note.public ?? false)
+  const [aiPanelOpen, setAiPanelOpen] = useState(false)
+  const [aiPanelMode, setAiPanelMode] = useState<'summarize' | 'rewrite'>('summarize')
+  const [aiSelection, setAiSelection] = useState<string | undefined>(undefined)
+  const [autocompleteOn, setAutocompleteOn] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('noteai_autocomplete') === 'true'
+  })
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const localTitleRef = useRef(local.title)
-  localTitleRef.current = local.title
+  useEffect(() => { localTitleRef.current = local.title })
 
   const editor = useEditor({
     extensions: [
@@ -57,6 +69,7 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
       TableCell,
       TaskList,
       TaskItem.configure({ nested: true }),
+      AutocompleteExtension,
     ],
     immediatelyRender: false,
     content: local.content,
@@ -84,6 +97,17 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
     },
     [note.id, save, onNoteUpdated]
   )
+
+  useEffect(() => {
+    setAutocompleteEnabled(autocompleteOn)
+    localStorage.setItem('noteai_autocomplete', String(autocompleteOn))
+  }, [autocompleteOn])
+
+  const openAiPanel = (mode: 'summarize' | 'rewrite', selection?: string) => {
+    setAiPanelMode(mode)
+    setAiSelection(selection)
+    setAiPanelOpen(true)
+  }
 
   const wordCount = (() => {
     const text = stripHtml(local.content)
@@ -123,9 +147,11 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
           >
             <Star size={14} className={starred ? 'fill-amber-400/80' : ''} />
           </button>
-          <button className="w-7 h-7 rounded-lg flex items-center justify-center app-icon-btn">
-            <Share2 size={14} />
-          </button>
+          <SharePopover
+            noteId={note.id}
+            isPublic={isPublic}
+            onTogglePublic={setIsPublic}
+          />
           <button className="w-7 h-7 rounded-lg flex items-center justify-center app-icon-btn">
             <MoreHorizontal size={14} />
           </button>
@@ -182,20 +208,58 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
             </>
           )}
         </div>
+        {isSignedIn && (
+          <button
+            onClick={() => setAutocompleteOn(v => !v)}
+            title={autocompleteOn ? 'Autocomplete on — click to disable' : 'Autocomplete off — click to enable'}
+            className={cn(
+              'flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-mono transition-all pointer-events-auto',
+              autocompleteOn
+                ? 'bg-violet-500/12 text-violet-400/80 border border-violet-500/20'
+                : 'surface border border-dim t-muted opacity-60 hover:opacity-100',
+            )}
+          >
+            <Sparkles size={9} />
+            AI complete {autocompleteOn ? 'on' : 'off'}
+          </button>
+        )}
       </div>
 
       {/* AI button */}
-      <div className="absolute bottom-5 right-6 pointer-events-auto">
+      <div className="absolute bottom-5 right-6 pointer-events-auto z-20">
         <motion.button
           whileHover={{ scale: 1.04, y: -1 }}
           whileTap={{ scale: 0.96 }}
+          onClick={() => aiPanelOpen ? setAiPanelOpen(false) : openAiPanel('summarize')}
           transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[12.5px] font-semibold text-white bg-linear-to-br from-violet-600 to-indigo-600 shadow-lg shadow-violet-950/60 hover:from-violet-500 hover:to-indigo-500 transition-all duration-200"
+          className={cn(
+            'flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[12.5px] font-semibold text-white transition-all duration-200',
+            aiPanelOpen
+              ? 'bg-linear-to-br from-violet-700 to-indigo-700 shadow-lg shadow-violet-950/60'
+              : 'bg-linear-to-br from-violet-600 to-indigo-600 shadow-lg shadow-violet-950/60 hover:from-violet-500 hover:to-indigo-500',
+          )}
         >
           <Sparkles size={13} className="shrink-0" />
-          Ask AI
+          {aiPanelOpen ? 'Close AI' : 'Ask AI'}
         </motion.button>
       </div>
+
+      {/* AI Panel — slides in from right */}
+      <AiPanel
+        isOpen={aiPanelOpen}
+        onClose={() => setAiPanelOpen(false)}
+        note={note}
+        editor={editor}
+        initialMode={aiPanelMode}
+        initialSelection={aiSelection}
+      />
+
+      {/* Selection bubble — floats above selected text */}
+      <SelectionBubble
+        editor={editor}
+        onImprove={(text) => openAiPanel('rewrite', text)}
+        onSummarize={(text) => openAiPanel('summarize', text)}
+      />
     </motion.div>
   )
 }

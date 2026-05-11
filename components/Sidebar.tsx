@@ -40,7 +40,7 @@ export default function Sidebar({
       {/* Logo + toggle */}
       <div className={cn('flex items-center py-4 px-3.5 mb-1', open ? 'justify-between' : 'justify-center')}>
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 rounded-[9px] bg-gradient-to-br from-violet-500 to-indigo-700 flex items-center justify-center shrink-0 shadow-lg shadow-violet-950/30">
+          <div className="w-7 h-7 rounded-[9px] bg-linear-to-br from-violet-500 to-indigo-700 flex items-center justify-center shrink-0 shadow-lg shadow-violet-950/30">
             <Zap size={13} className="text-white" fill="white" />
           </div>
           <AnimatePresence>

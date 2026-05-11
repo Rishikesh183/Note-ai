@@ -27,7 +27,7 @@ export async function PATCH(
   }
 
   /* Only allow safe fields */
-  const allowed = ['title', 'content', 'favorite', 'category'] as const
+  const allowed = ['title', 'content', 'favorite', 'category', 'public'] as const
   const patch: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in body) patch[key] = body[key]
