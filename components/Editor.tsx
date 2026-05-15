@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { MoreHorizontal, Star, PanelLeft, Sparkles, Clock } from 'lucide-react'
+import { MoreHorizontal, Star, PanelLeft, Sparkles, Clock, ChevronLeft } from 'lucide-react'
 import { useUser, SignInButton, UserButton } from '@clerk/nextjs'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -31,13 +31,14 @@ interface EditorProps {
   onToggleFavorite: (id: string, current: boolean) => void
   onToggleSidebar: () => void
   sidebarOpen: boolean
+  onBack?: () => void
 }
 
 function stripHtml(html: string) {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
-export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggleSidebar, sidebarOpen }: EditorProps) {
+export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggleSidebar, sidebarOpen, onBack }: EditorProps) {
   const { isSignedIn } = useUser()
   const { local, save, status } = useAutosave(
     note.id,
@@ -123,13 +124,17 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
       className="flex-1 h-full flex flex-col editor-bg min-w-0 relative"
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 panel-border-b shrink-0">
+      <div className="flex items-center justify-between px-3 sm:px-5 py-3 panel-border-b shrink-0">
         <div className="flex items-center gap-3">
-          {!sidebarOpen && (
+          {onBack ? (
+            <button onClick={onBack} className="w-7 h-7 rounded-lg flex items-center justify-center app-icon-btn">
+              <ChevronLeft size={14} />
+            </button>
+          ) : !sidebarOpen ? (
             <button onClick={onToggleSidebar} className="w-7 h-7 rounded-lg flex items-center justify-center app-icon-btn">
               <PanelLeft size={14} />
             </button>
-          )}
+          ) : null}
           <div className="flex items-center gap-1.5 t-muted">
             <Clock size={11} />
             <span className="text-[11px] font-mono">{note.updatedAt}</span>
@@ -177,7 +182,7 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-170 mx-auto px-10 pt-8 pb-24">
+        <div className="max-w-170 mx-auto px-4 sm:px-8 lg:px-10 pt-8 pb-24">
           <textarea
             ref={titleRef}
             value={local.title}
@@ -198,16 +203,14 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
       </div>
 
       {/* Status bar */}
-      <div className="absolute bottom-0 left-0 right-0 px-8 py-3 flex items-center justify-between pointer-events-none">
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] t-muted font-mono">{wordCount} {wordCount === 1 ? 'word' : 'words'}</span>
-          {note.category && (
-            <>
-              <span className="t-muted text-[10px]">·</span>
-              <span className="text-[10px] t-muted capitalize">{note.category}</span>
-            </>
-          )}
-        </div>
+      <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 py-3 flex items-center gap-3 pointer-events-none">
+        <span className="text-[10px] t-muted font-mono">{wordCount} {wordCount === 1 ? 'word' : 'words'}</span>
+        {note.category && (
+          <>
+            <span className="t-muted text-[10px]">·</span>
+            <span className="text-[10px] t-muted capitalize">{note.category}</span>
+          </>
+        )}
         {isSignedIn && (
           <button
             onClick={() => setAutocompleteOn(v => !v)}

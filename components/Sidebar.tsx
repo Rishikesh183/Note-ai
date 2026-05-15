@@ -3,11 +3,12 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, Star, Sparkles, Clock, Trash2,
-  Plus, ChevronLeft, ChevronRight, Command, Zap,
+  Plus, ChevronLeft, ChevronRight, Command, Zap, X,
 } from 'lucide-react'
 import { NavItem } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import ThemeToggle from './ThemeToggle'
+import { useMobile } from '@/hooks/useMobile'
 
 const NAV_ITEMS = [
   { id: 'all'       as NavItem, label: 'All Notes',     icon: FileText  },
@@ -30,21 +31,21 @@ export default function Sidebar({
   open, onToggle, activeNav, onNavChange, onNewNote, onOpenCommandPalette,
 }: SidebarProps) {
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
-  return (
-    <motion.aside
-      initial={false}
-      animate={{ width: open ? 232 : 58 }}
-      transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-      className="h-full flex flex-col panel-bg panel-border-r relative z-20 shrink-0 overflow-hidden"
-    >
+  const isMobile = useMobile()
+
+  // On mobile the drawer is always "expanded" when visible
+  const effectivelyOpen = isMobile ? true : open
+
+  const content = (
+    <>
       {/* Logo + toggle */}
-      <div className={cn('flex items-center py-4 px-3.5 mb-1', open ? 'justify-between' : 'justify-center')}>
+      <div className={cn('flex items-center py-4 px-3.5 mb-1', effectivelyOpen ? 'justify-between' : 'justify-center')}>
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-7 h-7 rounded-[9px] bg-linear-to-br from-violet-500 to-indigo-700 flex items-center justify-center shrink-0 shadow-lg shadow-violet-950/30">
             <Zap size={13} className="text-white" fill="white" />
           </div>
           <AnimatePresence>
-            {open && (
+            {effectivelyOpen && (
               <motion.span
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -58,32 +59,31 @@ export default function Sidebar({
           </AnimatePresence>
         </div>
 
-        {open && (
+        {effectivelyOpen && (
           <button onClick={onToggle} className="w-6 h-6 rounded-md flex items-center justify-center app-icon-btn shrink-0">
-            <ChevronLeft size={13} />
+            {isMobile ? <X size={13} /> : <ChevronLeft size={13} />}
           </button>
         )}
       </div>
 
-      {!open && (
+      {!effectivelyOpen && (
         <button onClick={onToggle} className="mx-auto mb-2 w-7 h-7 rounded-lg flex items-center justify-center app-icon-btn">
           <ChevronRight size={13} />
         </button>
       )}
 
       {/* Command palette trigger */}
-      <div className={cn('px-2.5 mb-3', !open && 'px-1.5')}>
+      <div className={cn('px-2.5 mb-3', !effectivelyOpen && 'px-1.5')}>
         <button
-          onClick={onOpenCommandPalette}
+          onClick={() => { onOpenCommandPalette(); if (isMobile) onToggle() }}
           className={cn(
             'w-full flex items-center gap-2 rounded-xl border surface-btn transition-all duration-150',
-            open ? 'px-2.5 py-2' : 'justify-center p-2'
+            effectivelyOpen ? 'px-2.5 py-2' : 'justify-center p-2'
           )}
         >
           {isMac ? <Command size={12} className="shrink-0" /> : <span className="text-[10px] font-mono"></span>}
-          {/* <Command size={12} className="shrink-0" /> */}
           <AnimatePresence>
-            {open && (
+            {effectivelyOpen && (
               <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -94,29 +94,29 @@ export default function Sidebar({
               </motion.span>
             )}
           </AnimatePresence>
-          {open && <kbd className="text-[9.5px] font-mono t-muted tracking-tighter">{isMac ? '⌘K' : 'Ctrl+K'}</kbd>}
+          {effectivelyOpen && <kbd className="text-[9.5px] font-mono t-muted tracking-tighter">{isMac ? '⌘K' : 'Ctrl+K'}</kbd>}
         </button>
       </div>
 
-      {open && (
+      {effectivelyOpen && (
         <div className="px-4 mb-1">
           <span className="text-[9.5px] font-semibold t-muted uppercase tracking-widest">Library</span>
         </div>
       )}
 
       {/* Navigation */}
-      <nav className={cn('flex-1 space-y-0.5', open ? 'px-2.5' : 'px-1.5')}>
+      <nav className={cn('flex-1 space-y-0.5', effectivelyOpen ? 'px-2.5' : 'px-1.5')}>
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon
           const isActive = activeNav === item.id
           return (
             <button
               key={item.id}
-              onClick={() => onNavChange(item.id)}
-              title={!open ? item.label : undefined}
+              onClick={() => { onNavChange(item.id); if (isMobile) onToggle() }}
+              title={!effectivelyOpen ? item.label : undefined}
               className={cn(
                 'w-full flex items-center rounded-xl text-[12.5px] transition-all duration-150 relative group',
-                open ? 'gap-2.5 px-2.5 py-2' : 'justify-center p-2',
+                effectivelyOpen ? 'gap-2.5 px-2.5 py-2' : 'justify-center p-2',
                 isActive ? 'nav-active' : 'app-icon-btn'
               )}
             >
@@ -126,7 +126,7 @@ export default function Sidebar({
                 className={cn('shrink-0', isActive ? 'text-violet-400' : '')}
               />
               <AnimatePresence>
-                {open && (
+                {effectivelyOpen && (
                   <motion.span
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -137,10 +137,10 @@ export default function Sidebar({
                   </motion.span>
                 )}
               </AnimatePresence>
-              {open && item.special && (
+              {effectivelyOpen && item.special && (
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-500/18 text-violet-400/80 font-semibold tracking-wide">AI</span>
               )}
-              {isActive && open && (
+              {isActive && effectivelyOpen && (
                 <motion.div layoutId="nav-indicator" className="absolute right-2 w-1 h-4 rounded-full bg-violet-400/70" />
               )}
             </button>
@@ -149,25 +149,25 @@ export default function Sidebar({
       </nav>
 
       {/* Bottom: theme toggle + new note */}
-      <div className={cn('border-t border-dim p-2.5 space-y-1.5', !open && 'p-1.5')}>
-        <div className={cn('flex', open ? 'justify-start px-0.5' : 'justify-center')}>
+      <div className={cn('border-t border-dim p-2.5 space-y-1.5', !effectivelyOpen && 'p-1.5')}>
+        <div className={cn('flex', effectivelyOpen ? 'justify-start px-0.5' : 'justify-center')}>
           <ThemeToggle />
         </div>
 
         <motion.button
-          onClick={onNewNote}
+          onClick={() => { onNewNote(); if (isMobile) onToggle() }}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
           className={cn(
             'w-full flex items-center rounded-xl text-[12.5px] font-semibold text-white transition-all duration-200',
-            'bg-gradient-to-br from-violet-600 to-indigo-700 hover:from-violet-500 hover:to-indigo-600',
+            'bg-linear-to-br from-violet-600 to-indigo-700 hover:from-violet-500 hover:to-indigo-600',
             'shadow-md shadow-violet-950/40',
-            open ? 'gap-2 px-3 py-2.5 justify-start' : 'justify-center p-2.5'
+            effectivelyOpen ? 'gap-2 px-3 py-2.5 justify-start' : 'justify-center p-2.5'
           )}
         >
           <Plus size={14} strokeWidth={2.5} className="shrink-0" />
           <AnimatePresence>
-            {open && (
+            {effectivelyOpen && (
               <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 New Note
               </motion.span>
@@ -175,6 +175,50 @@ export default function Sidebar({
           </AnimatePresence>
         </motion.button>
       </div>
+    </>
+  )
+
+  if (isMobile) {
+    return (
+      <>
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              key="sidebar-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onToggle}
+              className="fixed inset-0 z-30 bg-black/50"
+            />
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {open && (
+            <motion.aside
+              key="sidebar-drawer"
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+              className="fixed left-0 top-0 bottom-0 w-64 z-40 flex flex-col panel-bg shadow-2xl overflow-hidden"
+            >
+              {content}
+            </motion.aside>
+          )}
+        </AnimatePresence>
+      </>
+    )
+  }
+
+  return (
+    <motion.aside
+      initial={false}
+      animate={{ width: open ? 232 : 58 }}
+      transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+      className="h-full flex flex-col panel-bg panel-border-r relative z-20 shrink-0 overflow-hidden"
+    >
+      {content}
     </motion.aside>
   )
 }

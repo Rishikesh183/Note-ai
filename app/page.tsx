@@ -11,6 +11,8 @@ import CommandPalette from '@/components/CommandPalette'
 import AiWorkspace from '@/components/ai/AiWorkspace'
 import { useNotes } from '@/lib/firestore'
 import { NavItem } from '@/lib/mock-data'
+import { useMobile } from '@/hooks/useMobile'
+import { cn } from '@/lib/utils'
 
 export default function Page() {
   const { user, isLoaded } = useUser()
@@ -25,6 +27,12 @@ export default function Page() {
   const [activeNav, setActiveNav] = useState<NavItem>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+  const [mobileView, setMobileView] = useState<'list' | 'editor'>('list')
+  const isMobile = useMobile()
+
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false)
+  }, [isMobile])
 
   const handleNewNote = useCallback(async () => {
     const note = await createNote()
@@ -32,7 +40,9 @@ export default function Page() {
     setSelectedNoteId(note.id)
     setActiveNav('all')
     setSearchQuery('')
-  }, [createNote])
+    setMobileView('editor')
+    if (isMobile) setSidebarOpen(false)
+  }, [createNote, isMobile])
 
   /* Keyboard shortcuts */
   useEffect(() => {
@@ -69,7 +79,10 @@ export default function Page() {
   const handleDeleteNote = useCallback(
     async (id: string) => {
       await deleteNote(id)
-      if (selectedNoteId === id) setSelectedNoteId(null)
+      if (selectedNoteId === id) {
+        setSelectedNoteId(null)
+        setMobileView('list')
+      }
     },
     [deleteNote, selectedNoteId]
   )
@@ -143,8 +156,8 @@ export default function Page() {
   if (loading) {
     return (
       <div className="flex h-screen app-bg overflow-hidden">
-        <div className="w-14.5 h-full panel-bg panel-border-r shrink-0" />
-        <div className="w-68 h-full panel-bg panel-border-r shrink-0 p-4 space-y-2">
+        <div className="hidden md:block w-14.5 h-full panel-bg panel-border-r shrink-0" />
+        <div className="w-full md:w-68 h-full panel-bg panel-border-r shrink-0 p-4 space-y-2">
           {[80, 60, 72, 55, 68].map((_w, i) => (
             <motion.div
               key={i}
@@ -154,7 +167,7 @@ export default function Page() {
             />
           ))}
         </div>
-        <div className="flex-1 editor-bg flex items-center justify-center">
+        <div className="hidden md:flex flex-1 editor-bg items-center justify-center">
           <motion.div
             animate={{ opacity: [0.3, 0.7, 0.3] }}
             transition={{ duration: 1.4, repeat: Infinity }}
@@ -171,64 +184,81 @@ export default function Page() {
         open={sidebarOpen}
         onToggle={() => setSidebarOpen((o) => !o)}
         activeNav={activeNav}
-        onNavChange={(nav) => { setActiveNav(nav); setSearchQuery('') }}
+        onNavChange={(nav) => { setActiveNav(nav); setSearchQuery(''); if (isMobile) setSidebarOpen(false) }}
         onNewNote={handleNewNote}
         onOpenCommandPalette={() => setCommandPaletteOpen(true)}
       />
 
       <div className="flex flex-1 overflow-hidden min-w-0">
-        {/* AI Workspace replaces NotesList when activeNav === 'ai' */}
-        {activeNav === 'ai' ? (
-          <AiWorkspace
-            notes={notes}
-            onSelectNote={(n) => {
-              setSelectedNoteId(n.id)
-              setActiveNav('all')
-            }}
-          />
-        ) : (
-          <NotesList
-            notes={filteredNotes}
-            selectedNote={selectedNote}
-            onSelectNote={(n) => setSelectedNoteId(n.id)}
-            onDeleteNote={handleDeleteNote}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            activeNav={activeNav}
-            onNewNote={handleNewNote}
-          />
-        )}
-
-        <AnimatePresence mode="wait">
-          {selectedNote ? (
-            <Editor
-              key={selectedNote.id}
-              note={selectedNote}
-              onNoteUpdated={updateNoteInList}
-              onToggleFavorite={handleToggleFavorite}
-              onToggleSidebar={() => setSidebarOpen((o) => !o)}
-              sidebarOpen={sidebarOpen}
+        {/* Left panel: NotesList or AiWorkspace */}
+        <div className={cn(
+          'h-full',
+          isMobile
+            ? mobileView === 'editor' ? 'hidden' : 'flex flex-1'
+            : 'flex shrink-0'
+        )}>
+          {activeNav === 'ai' ? (
+            <AiWorkspace
+              notes={notes}
+              onSelectNote={(n) => {
+                setSelectedNoteId(n.id)
+                setActiveNav('all')
+                if (isMobile) setMobileView('editor')
+              }}
+              onClose={isMobile ? () => setActiveNav('all') : undefined}
             />
           ) : (
-            <motion.div
-              key="empty-editor"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex-1 editor-bg flex flex-col items-center justify-center gap-4"
-            >
-              <div className="w-12 h-12 rounded-2xl surface flex items-center justify-center">
-                <Plus size={20} className="t-muted" />
-              </div>
-              <p className="text-[13px] t-muted">Create a note to get started</p>
-              <button
-                onClick={handleNewNote}
-                className="h-9 px-4 rounded-xl bg-linear-to-r from-violet-600 to-indigo-600 text-white text-[12.5px] font-semibold hover:from-violet-500 hover:to-indigo-500 transition-all"
-              >
-                New Note
-              </button>
-            </motion.div>
+            <NotesList
+              notes={filteredNotes}
+              selectedNote={selectedNote}
+              onSelectNote={(n) => { setSelectedNoteId(n.id); if (isMobile) setMobileView('editor') }}
+              onDeleteNote={handleDeleteNote}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              activeNav={activeNav}
+              onNewNote={handleNewNote}
+              onToggleSidebar={() => setSidebarOpen((o) => !o)}
+            />
           )}
-        </AnimatePresence>
+        </div>
+
+        {/* Right panel: Editor or empty state */}
+        <div className={cn(
+          'flex flex-1 min-w-0 overflow-hidden',
+          isMobile && mobileView === 'list' ? 'hidden' : ''
+        )}>
+          <AnimatePresence mode="wait">
+            {selectedNote ? (
+              <Editor
+                key={selectedNote.id}
+                note={selectedNote}
+                onNoteUpdated={updateNoteInList}
+                onToggleFavorite={handleToggleFavorite}
+                onToggleSidebar={() => setSidebarOpen((o) => !o)}
+                sidebarOpen={sidebarOpen}
+                onBack={isMobile ? () => setMobileView('list') : undefined}
+              />
+            ) : (
+              <motion.div
+                key="empty-editor"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex-1 editor-bg flex flex-col items-center justify-center gap-4"
+              >
+                <div className="w-12 h-12 rounded-2xl surface flex items-center justify-center">
+                  <Plus size={20} className="t-muted" />
+                </div>
+                <p className="text-[13px] t-muted">Create a note to get started</p>
+                <button
+                  onClick={handleNewNote}
+                  className="h-9 px-4 rounded-xl bg-linear-to-r from-violet-600 to-indigo-600 text-white text-[12.5px] font-semibold hover:from-violet-500 hover:to-indigo-500 transition-all"
+                >
+                  New Note
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       <AnimatePresence>

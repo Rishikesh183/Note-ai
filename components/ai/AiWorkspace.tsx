@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Send, RefreshCw, FileText, Settings } from 'lucide-react'
+import { Sparkles, Send, RefreshCw, FileText, Settings, ChevronLeft } from 'lucide-react'
 import type { Note } from '@/lib/mock-data'
 import AiSettingsModal from './AiSettingsModal'
 
@@ -16,6 +16,7 @@ interface Message {
 interface Props {
   notes: Note[]
   onSelectNote: (note: Note) => void
+  onClose?: () => void
 }
 
 const SUGGESTIONS = [
@@ -25,7 +26,7 @@ const SUGGESTIONS = [
   'Find notes about design decisions',
 ]
 
-export default function AiWorkspace({ notes, onSelectNote }: Props) {
+export default function AiWorkspace({ notes, onSelectNote, onClose }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -108,10 +109,15 @@ export default function AiWorkspace({ notes, onSelectNote }: Props) {
   }
 
   return (
-    <div className="w-72 shrink-0 h-full flex flex-col panel-bg panel-border-r">
+    <div className="w-full md:w-72 shrink-0 h-full flex flex-col panel-bg panel-border-r">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 panel-border-b shrink-0">
         <div className="flex items-center gap-2">
+          {onClose && (
+            <button onClick={onClose} className="w-6 h-6 rounded-lg flex items-center justify-center app-icon-btn md:hidden">
+              <ChevronLeft size={13} />
+            </button>
+          )}
           <div className="w-6 h-6 rounded-lg bg-linear-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
             <Sparkles size={11} className="text-white" />
           </div>

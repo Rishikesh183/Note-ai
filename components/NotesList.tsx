@@ -1,7 +1,7 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, FileText, X, Plus } from 'lucide-react'
+import { Search, FileText, X, Plus, Menu } from 'lucide-react'
 import NoteCard from './NoteCard'
 import { Note, NavItem } from '@/lib/mock-data'
 
@@ -30,6 +30,7 @@ interface NotesListProps {
   onSearchChange: (q: string) => void
   activeNav: NavItem
   onNewNote: () => void
+  onToggleSidebar?: () => void
 }
 
 export default function NotesList({
@@ -41,19 +42,30 @@ export default function NotesList({
   onSearchChange,
   activeNav,
   onNewNote,
+  onToggleSidebar,
 }: NotesListProps) {
   return (
-    <div className="w-68 h-full flex flex-col shrink-0 panel-bg panel-border-r">
+    <div className="w-full md:w-68 h-full flex flex-col shrink-0 panel-bg panel-border-r">
       {/* Header */}
       <div className="px-4 pt-5 pb-3 shrink-0">
         <div className="flex items-start justify-between mb-3">
-          <div>
-            <h2 className="text-[13px] font-semibold t-primary tracking-tight">
-              {NAV_LABELS[activeNav]}
-            </h2>
-            <p className="text-[10.5px] t-muted mt-0.5">
-              {NAV_DESCRIPTIONS[activeNav]}
-            </p>
+          <div className="flex items-center gap-2 min-w-0">
+            {onToggleSidebar && (
+              <button
+                onClick={onToggleSidebar}
+                className="w-7 h-7 rounded-lg flex items-center justify-center app-icon-btn shrink-0 md:hidden"
+              >
+                <Menu size={14} />
+              </button>
+            )}
+            <div className="min-w-0">
+              <h2 className="text-[13px] font-semibold t-primary tracking-tight">
+                {NAV_LABELS[activeNav]}
+              </h2>
+              <p className="text-[10.5px] t-muted mt-0.5">
+                {NAV_DESCRIPTIONS[activeNav]}
+              </p>
+            </div>
           </div>
           <button
             onClick={onNewNote}

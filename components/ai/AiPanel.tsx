@@ -131,11 +131,11 @@ export default function AiPanel({ isOpen, onClose, note, editor, initialMode = '
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ x: 340, opacity: 0 }}
+            initial={{ x: '100%', opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 340, opacity: 0 }}
+            exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-            className="absolute right-0 top-0 bottom-0 w-80 z-30 flex flex-col cmd-bg border-l border-dim shadow-2xl shadow-black/30 backdrop-blur-2xl"
+            className="absolute right-0 top-0 bottom-0 w-full sm:w-80 z-30 flex flex-col cmd-bg border-l border-dim shadow-2xl shadow-black/30 backdrop-blur-2xl"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-dim shrink-0">
