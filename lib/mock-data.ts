@@ -1,7 +1,14 @@
+export interface NoteTab {
+  id: string
+  name: string
+  content: string
+}
+
 export interface Note {
   id: string
   title: string
-  content: string
+  content: string  // kept for backward compat — mirrors tabs[0].content
+  tabs: NoteTab[]
   preview: string
   updatedAt: string
   favorite: boolean
@@ -11,6 +18,7 @@ export interface Note {
 }
 
 export type NavItem = 'all' | 'favorites' | 'ai' | 'recent' | 'trash'
+
 
 export const MOCK_NOTES: Note[] = [
   {
@@ -36,6 +44,7 @@ Improve load times and responsiveness across all platforms. Target: < 100ms firs
 ## Collaboration
 
 Real-time multiplayer editing with presence indicators and inline comments.`,
+    tabs: [],
     preview: 'Key initiatives including AI integration, performance improvements, and new collaboration features for teams.',
     updatedAt: '2 min ago',
     favorite: true,
@@ -63,6 +72,7 @@ Reviewed the new dashboard component library and design tokens. The team agreed 
 ### Next Steps
 
 Follow-up in 2 weeks after design tokens are finalized.`,
+    tabs: [],
     preview: 'Design review session for the new dashboard. Discussed component library and design tokens.',
     updatedAt: '1 hour ago',
     favorite: false,
@@ -83,6 +93,7 @@ Brainstorming session for things to build this weekend. No pressure, just fun.
 5. **URL shortener** — Edge functions, custom domain, analytics
 
 Leaning towards the WebGL shaders project. Need to dig into Three.js first.`,
+    tabs: [],
     preview: 'Build a weather app, create a CLI tool for note taking, experiment with WebGL shaders...',
     updatedAt: 'Yesterday',
     favorite: true,
@@ -114,6 +125,7 @@ Every action is a vote for the person you want to become.
 2. Make it attractive
 3. Make it easy
 4. Make it satisfying`,
+    tabs: [],
     preview: 'Key insights about habit formation, the 1% rule, and identity-based habits.',
     updatedAt: '2 days ago',
     favorite: false,
@@ -148,6 +160,7 @@ Return structured errors with \`code\`, \`message\`, and \`details\`.
 ## Authentication
 
 Use Bearer tokens. Rotate secrets quarterly.`,
+    tabs: [],
     preview: 'RESTful conventions, versioning strategy, error handling, and authentication patterns.',
     updatedAt: '3 days ago',
     favorite: false,
@@ -180,6 +193,7 @@ Use Bearer tokens. Rotate secrets quarterly.`,
 - Tsukiji Market breakfast
 - Okonomiyaki in Osaka
 - Matcha everything`,
+    tabs: [],
     preview: 'Tokyo 5 days, Kyoto 3 days, Osaka 2 days. Must-see temples, food spots, and hidden gems.',
     updatedAt: '1 week ago',
     favorite: true,

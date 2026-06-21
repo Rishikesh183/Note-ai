@@ -7,13 +7,15 @@ import type { Editor } from '@tiptap/react'
 
 interface Props {
   editor: Editor | null
-  onImprove: (text: string) => void
+  onImprove: (text: string, range?: { from: number; to: number }) => void
   onSummarize: (text: string) => void
 }
 
 export default function SelectionBubble({ editor, onImprove, onSummarize }: Props) {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const [selText, setSelText] = useState('')
+
+  const [selRange, setSelRange] = useState<{ from: number; to: number } | null>(null)
 
   const update = useCallback(() => {
     if (!editor) return
@@ -29,6 +31,7 @@ export default function SelectionBubble({ editor, onImprove, onSummarize }: Prop
     if (!rect.width) { setPos(null); return }
 
     setSelText(text)
+    setSelRange({ from, to })
     setPos({
       top: rect.top - 8,
       left: Math.min(
@@ -71,7 +74,7 @@ export default function SelectionBubble({ editor, onImprove, onSummarize }: Prop
           onMouseDown={(e) => e.preventDefault()}
         >
           <button
-            onClick={() => { onImprove(selText); setPos(null) }}
+            onClick={() => { onImprove(selText, selRange ?? undefined); setPos(null) }}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium app-icon-btn transition-colors"
           >
             <Wand2 size={11} className="text-violet-400" />

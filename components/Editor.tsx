@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { MoreHorizontal, Star, PanelLeft, Sparkles, Clock, ChevronLeft } from 'lucide-react'
+import { MoreHorizontal, Star, PanelLeft, Sparkles, Clock, ChevronLeft, Plus, X } from 'lucide-react'
 import { useUser, SignInButton, UserButton } from '@clerk/nextjs'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -22,7 +22,7 @@ import AiPanel from './ai/AiPanel'
 import SelectionBubble from './ai/SelectionBubble'
 import { AutocompleteExtension, setAutocompleteEnabled } from './ai/AutocompleteExtension'
 import { useAutosave } from '@/hooks/useAutosave'
-import { Note } from '@/lib/mock-data'
+import { Note, NoteTab } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 
 interface EditorProps {
@@ -38,18 +38,33 @@ function stripHtml(html: string) {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+function makeTab(name: string): NoteTab {
+  return { id: `tab_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, name, content: '' }
+}
+
+function migrateTabs(note: Note): NoteTab[] {
+  if (Array.isArray(note.tabs) && note.tabs.length > 0) return note.tabs
+  return [{ id: 'tab_1', name: 'Main', content: note.content ?? '' }]
+}
+
 export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggleSidebar, sidebarOpen, onBack }: EditorProps) {
   const { isSignedIn } = useUser()
+  const initialTabs = migrateTabs(note)
   const { local, save, status } = useAutosave(
     note.id,
-    { title: note.title, content: note.content },
-    (synced) => onNoteUpdated(note.id, synced)
+    { title: note.title, tabs: initialTabs },
+    (synced) => onNoteUpdated(note.id, { title: synced.title, content: synced.tabs[0]?.content ?? '' })
   )
+
+  const [activeTabId, setActiveTabId] = useState(initialTabs[0]?.id ?? 'tab_1')
+  const [editingTabId, setEditingTabId] = useState<string | null>(null)
+  const [editingTabName, setEditingTabName] = useState('')
   const [starred, setStarred] = useState(note.favorite)
   const [isPublic, setIsPublic] = useState(note.public ?? false)
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [aiPanelMode, setAiPanelMode] = useState<'summarize' | 'rewrite'>('summarize')
   const [aiSelection, setAiSelection] = useState<string | undefined>(undefined)
+  const [aiSelectionRange, setAiSelectionRange] = useState<{ from: number; to: number } | undefined>(undefined)
   const [autocompleteOn, setAutocompleteOn] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('noteai_autocomplete') === 'true'
@@ -57,6 +72,11 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const localTitleRef = useRef(local.title)
   useEffect(() => { localTitleRef.current = local.title })
+
+  // Active tab data
+  const tabs = local.tabs.length > 0 ? local.tabs : initialTabs
+  const activeTab = tabs.find(t => t.id === activeTabId) ?? tabs[0]
+  const activeContent = activeTab?.content ?? ''
 
   const editor = useEditor({
     extensions: [
@@ -73,16 +93,26 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
       AutocompleteExtension,
     ],
     immediatelyRender: false,
-    content: local.content,
+    content: activeContent,
     editorProps: {
       attributes: { class: 'tiptap-content' },
     },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML()
-      save({ content: html })
-      onNoteUpdated(note.id, { title: localTitleRef.current, content: html })
+      const updatedTabs = tabs.map(t => t.id === activeTab?.id ? { ...t, content: html } : t)
+      save({ tabs: updatedTabs })
+      onNoteUpdated(note.id, { title: localTitleRef.current, content: updatedTabs[0]?.content ?? '' })
     },
   })
+
+  // Swap editor content when switching tabs (without triggering onUpdate)
+  const prevTabId = useRef(activeTabId)
+  useEffect(() => {
+    if (!editor || prevTabId.current === activeTabId) return
+    prevTabId.current = activeTabId
+    const tab = tabs.find(t => t.id === activeTabId)
+    editor.commands.setContent(tab?.content ?? '', { emitUpdate: false })
+  }, [activeTabId, editor, tabs])
 
   useEffect(() => {
     const el = titleRef.current
@@ -94,24 +124,56 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
   const handleTitleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       save({ title: e.target.value })
-      onNoteUpdated(note.id, { title: e.target.value, content: localTitleRef.current })
+      onNoteUpdated(note.id, { title: e.target.value, content: activeContent })
     },
-    [note.id, save, onNoteUpdated]
+    [note.id, save, onNoteUpdated, activeContent]
   )
+
+  const handleAddTab = () => {
+    const newTab = makeTab(`Tab ${tabs.length + 1}`)
+    const updatedTabs = [...tabs, newTab]
+    save({ tabs: updatedTabs })
+    setActiveTabId(newTab.id)
+  }
+
+  const handleDeleteTab = (tabId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (tabs.length === 1) return
+    const idx = tabs.findIndex(t => t.id === tabId)
+    const updatedTabs = tabs.filter(t => t.id !== tabId)
+    save({ tabs: updatedTabs })
+    if (activeTabId === tabId) {
+      setActiveTabId(updatedTabs[Math.max(0, idx - 1)]?.id ?? updatedTabs[0].id)
+    }
+  }
+
+  const handleTabDoubleClick = (tab: NoteTab) => {
+    setEditingTabId(tab.id)
+    setEditingTabName(tab.name)
+  }
+
+  const commitTabRename = () => {
+    if (!editingTabId) return
+    const name = editingTabName.trim() || 'Tab'
+    const updatedTabs = tabs.map(t => t.id === editingTabId ? { ...t, name } : t)
+    save({ tabs: updatedTabs })
+    setEditingTabId(null)
+  }
 
   useEffect(() => {
     setAutocompleteEnabled(autocompleteOn)
     localStorage.setItem('noteai_autocomplete', String(autocompleteOn))
   }, [autocompleteOn])
 
-  const openAiPanel = (mode: 'summarize' | 'rewrite', selection?: string) => {
+  const openAiPanel = (mode: 'summarize' | 'rewrite', selection?: string, range?: { from: number; to: number }) => {
     setAiPanelMode(mode)
     setAiSelection(selection)
+    setAiSelectionRange(range)
     setAiPanelOpen(true)
   }
 
   const wordCount = (() => {
-    const text = stripHtml(local.content)
+    const text = stripHtml(activeContent)
     return text ? text.split(/\s+/).length : 0
   })()
 
@@ -152,11 +214,7 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
           >
             <Star size={14} className={starred ? 'fill-amber-400/80' : ''} />
           </button>
-          <SharePopover
-            noteId={note.id}
-            isPublic={isPublic}
-            onTogglePublic={setIsPublic}
-          />
+          <SharePopover noteId={note.id} isPublic={isPublic} onTogglePublic={setIsPublic} />
           <button className="w-7 h-7 rounded-lg flex items-center justify-center app-icon-btn">
             <MoreHorizontal size={14} />
           </button>
@@ -175,6 +233,52 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
             </div>
           )}
         </div>
+      </div>
+
+      {/* Tab bar */}
+      <div className="flex items-center gap-0.5 px-3 sm:px-5 pt-2 pb-0 shrink-0 overflow-x-auto scrollbar-hide">
+        {tabs.map(tab => (
+          <div
+            key={tab.id}
+            onClick={() => setActiveTabId(tab.id)}
+            onDoubleClick={() => handleTabDoubleClick(tab)}
+            className={cn(
+              'group flex items-center gap-1.5 px-3 py-1.5 rounded-t-lg text-[11.5px] font-medium cursor-pointer select-none shrink-0 border-b-2 transition-all duration-150',
+              tab.id === activeTabId
+                ? 'border-violet-500 text-violet-400 bg-violet-500/8'
+                : 'border-transparent t-muted hover:t-secondary hover:bg-(--bg-surface-hover)'
+            )}
+          >
+            {editingTabId === tab.id ? (
+              <input
+                autoFocus
+                value={editingTabName}
+                onChange={e => setEditingTabName(e.target.value)}
+                onBlur={commitTabRename}
+                onKeyDown={e => { if (e.key === 'Enter') commitTabRename(); if (e.key === 'Escape') setEditingTabId(null) }}
+                onClick={e => e.stopPropagation()}
+                className="bg-transparent outline-none w-20 text-[11.5px] t-primary"
+              />
+            ) : (
+              <span>{tab.name}</span>
+            )}
+            {tabs.length > 1 && (
+              <button
+                onClick={(e) => handleDeleteTab(tab.id, e)}
+                className="opacity-0 group-hover:opacity-100 w-3.5 h-3.5 flex items-center justify-center rounded hover:text-red-400 transition-all"
+              >
+                <X size={9} />
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          onClick={handleAddTab}
+          className="w-6 h-6 flex items-center justify-center rounded-lg app-icon-btn ml-1 shrink-0"
+          title="Add tab"
+        >
+          <Plus size={11} />
+        </button>
       </div>
 
       {/* Format toolbar */}
@@ -247,20 +351,22 @@ export default function Editor({ note, onNoteUpdated, onToggleFavorite, onToggle
         </motion.button>
       </div>
 
-      {/* AI Panel — slides in from right */}
+      {/* AI Panel */}
       <AiPanel
         isOpen={aiPanelOpen}
         onClose={() => setAiPanelOpen(false)}
         note={note}
         editor={editor}
+        activeContent={activeContent}
         initialMode={aiPanelMode}
         initialSelection={aiSelection}
+        initialSelectionRange={aiSelectionRange}
       />
 
-      {/* Selection bubble — floats above selected text */}
+      {/* Selection bubble */}
       <SelectionBubble
         editor={editor}
-        onImprove={(text) => openAiPanel('rewrite', text)}
+        onImprove={(text, range) => openAiPanel('rewrite', text, range)}
         onSummarize={(text) => openAiPanel('summarize', text)}
       />
     </motion.div>

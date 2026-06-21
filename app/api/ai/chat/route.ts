@@ -25,7 +25,9 @@ function keywordScore(text: string, question: string): number {
   return words.reduce((s, w) => s + (lower.includes(w) ? 1 : 0), 0)
 }
 
-const SYSTEM = `You are a helpful assistant with access to the user's notes. Answer questions based on the provided context. Be concise. Cite sources using [Note: Title] format. If the answer isn't in the notes, say so honestly.`
+const SYSTEM = `You are a helpful assistant with access to the user's notes. Answer questions based on the provided context. Be concise. Cite sources using [Note: Title] format. If the answer isn't in the notes, say so honestly.
+
+When the user asks to list notes, list all notes, or asks about favourites/favorites/starred notes, use the full note index provided — do not skip any.`
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth()
@@ -42,8 +44,13 @@ export async function POST(req: NextRequest) {
     .get()
 
   const notes = snap.docs
-    .map(d => ({ id: d.id, title: d.data().title ?? 'Untitled', content: stripHtml(d.data().content ?? '') }))
-    .filter(n => n.content.length > 20)
+    .map(d => ({
+      id: d.id,
+      title: d.data().title ?? 'Untitled',
+      content: stripHtml(d.data().content ?? ''),
+      favorite: d.data().favorite === true,
+    }))
+    .filter(n => n.content.length > 20 || n.title !== 'Untitled')
 
   if (notes.length === 0) {
     return Response.json({ error: 'No notes to search' }, { status: 404 })
@@ -51,35 +58,47 @@ export async function POST(req: NextRequest) {
 
   const topK = parseInt(process.env.AI_RAG_TOP_K ?? '5', 10)
 
-  // Keyword pre-filter → top 10 candidates
-  const candidates = notes
-    .map(n => ({ note: n, score: keywordScore(`${n.title} ${n.content}`, question) }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10)
-    .map(s => s.note)
+  const q = question.toLowerCase()
+  const isListIntent = /\b(list|show|all|every)\b.*\bnotes?\b|\bnotes?\b.*(list|all|every)/.test(q)
+  const isFavIntent  = /\b(fav(ou?rite)?s?|starred|bookmarked)\b/.test(q)
 
-  let relevantNotes = candidates.slice(0, topK)
+  let relevantNotes: typeof notes
 
-  // Semantic re-rank — only when explicitly enabled (free tier has 5 RPM embed limit)
-  if (process.env.AI_ENABLE_EMBEDDINGS === 'true') {
-    try {
-      const [qEmbed, ...noteEmbeds] = await Promise.all([
-        embed(question),
-        ...candidates.map(n => embed(`${n.title}\n${n.content.slice(0, 512)}`)),
-      ])
-      relevantNotes = candidates
-        .map((n, i) => ({ note: n, score: cosineSim(qEmbed, noteEmbeds[i]) }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, topK)
-        .map(s => s.note)
-    } catch {
-      // Fall back to keyword ranking
+  if (isListIntent || isFavIntent) {
+    // Bypass RAG — give AI full index (titles only to save tokens) or just favourites
+    relevantNotes = isFavIntent ? notes.filter(n => n.favorite) : notes
+  } else {
+    // Keyword pre-filter → top 10 candidates
+    const candidates = notes
+      .map(n => ({ note: n, score: keywordScore(`${n.title} ${n.content}`, question) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10)
+      .map(s => s.note)
+
+    relevantNotes = candidates.slice(0, topK)
+
+    // Semantic re-rank — only when explicitly enabled (free tier has 5 RPM embed limit)
+    if (process.env.AI_ENABLE_EMBEDDINGS === 'true') {
+      try {
+        const [qEmbed, ...noteEmbeds] = await Promise.all([
+          embed(question),
+          ...candidates.map(n => embed(`${n.title}\n${n.content.slice(0, 512)}`)),
+        ])
+        relevantNotes = candidates
+          .map((n, i) => ({ note: n, score: cosineSim(qEmbed, noteEmbeds[i]) }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, topK)
+          .map(s => s.note)
+      } catch {
+        // Fall back to keyword ranking
+      }
     }
   }
 
-  const context = relevantNotes
-    .map(n => `[Note: ${n.title}]\n${n.content.slice(0, 800)}`)
-    .join('\n\n---\n\n')
+  // For list/fav intents include only titles to stay within token budget when notes count is high
+  const context = (isListIntent || isFavIntent)
+    ? relevantNotes.map(n => `- [Note: ${n.title}]${n.favorite ? ' ⭐' : ''}`).join('\n')
+    : relevantNotes.map(n => `[Note: ${n.title}]\n${n.content.slice(0, 800)}`).join('\n\n---\n\n')
 
   const historyStr = ((history ?? []) as { role: string; content: string }[])
     .slice(-4)

@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { NoteTab } from '@/lib/mock-data'
 
 export type SaveStatus = 'saved' | 'draft' | 'saving' | 'offline'
 
 interface Local {
   title: string
-  content: string
+  tabs: NoteTab[]
 }
 
 function lsKey(noteId: string) {
@@ -30,7 +31,7 @@ export function useAutosave(
       const raw = localStorage.getItem(lsKey(noteId))
       if (raw) {
         const draft = JSON.parse(raw) as Local
-        if (draft.title !== initial.title || draft.content !== initial.content) return 'draft'
+        if (draft.title !== initial.title || JSON.stringify(draft.tabs) !== JSON.stringify(initial.tabs)) return 'draft'
       }
     } catch {}
     return 'saved'
@@ -48,7 +49,7 @@ export function useAutosave(
     setLocalState(next)
   }, [])
 
-  /* Reset on note switch — Editor is keyed by note.id so this fires once on mount */
+  /* Reset on note switch */
   useEffect(() => {
     if (lsTimer.current) clearTimeout(lsTimer.current)
     if (apiTimer.current) clearTimeout(apiTimer.current)
@@ -62,7 +63,7 @@ export function useAutosave(
     lastSynced.current = initial
     setLocal(restored)
     setStatus(
-      restored.title !== initial.title || restored.content !== initial.content
+      restored.title !== initial.title || JSON.stringify(restored.tabs) !== JSON.stringify(initial.tabs)
         ? 'draft'
         : 'saved'
     )
@@ -87,7 +88,6 @@ export function useAutosave(
       setLocal(next)
       setStatus('draft')
 
-      /* 2s → localStorage */
       if (lsTimer.current) clearTimeout(lsTimer.current)
       lsTimer.current = setTimeout(() => {
         try {
@@ -95,13 +95,12 @@ export function useAutosave(
         } catch {}
       }, 2000)
 
-      /* 4.5s → API PATCH (diff only) */
       if (apiTimer.current) clearTimeout(apiTimer.current)
       apiTimer.current = setTimeout(async () => {
         const current = localRef.current
-        const patch: Record<string, string> = {}
+        const patch: Record<string, unknown> = {}
         if (current.title !== lastSynced.current.title) patch.title = current.title
-        if (current.content !== lastSynced.current.content) patch.content = current.content
+        if (JSON.stringify(current.tabs) !== JSON.stringify(lastSynced.current.tabs)) patch.tabs = current.tabs
         if (Object.keys(patch).length === 0) {
           setStatus('saved')
           return

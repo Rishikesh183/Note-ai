@@ -15,8 +15,10 @@ interface Props {
   onClose: () => void
   note: Note | null
   editor: Editor | null
+  activeContent?: string
   initialMode?: Mode
   initialSelection?: string
+  initialSelectionRange?: { from: number; to: number }
 }
 
 function textToHtml(text: string): string {
@@ -27,7 +29,7 @@ function textToHtml(text: string): string {
     .join('')
 }
 
-export default function AiPanel({ isOpen, onClose, note, editor, initialMode = 'summarize', initialSelection }: Props) {
+export default function AiPanel({ isOpen, onClose, note, editor, activeContent, initialMode = 'summarize', initialSelection, initialSelectionRange }: Props) {
   const [mode, setMode] = useState<Mode>(initialMode)
   const [output, setOutput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -69,8 +71,8 @@ export default function AiPanel({ isOpen, onClose, note, editor, initialMode = '
       m === 'summarize' && initialSelection
         ? { title: 'Selection', content: initialSelection }
         : m === 'rewrite' && initialSelection
-        ? { title: note.title, content: note.content, selection: initialSelection }
-        : { title: note.title, content: note.content }
+        ? { title: note.title, content: activeContent ?? note.content, selection: initialSelection }
+        : { title: note.title, content: activeContent ?? note.content }
 
     try {
       const res = await fetch(endpoint, {
@@ -115,7 +117,12 @@ export default function AiPanel({ isOpen, onClose, note, editor, initialMode = '
 
   const handleReplace = () => {
     if (!editor || !output) return
-    editor.commands.setContent(textToHtml(output))
+    if (initialSelection && initialSelectionRange) {
+      const { from, to } = initialSelectionRange
+      editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, textToHtml(output)).run()
+    } else {
+      editor.commands.setContent(textToHtml(output))
+    }
     setReplaced(true)
     setTimeout(() => setReplaced(false), 1800)
   }
@@ -135,7 +142,7 @@ export default function AiPanel({ isOpen, onClose, note, editor, initialMode = '
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-            className="absolute right-0 top-0 bottom-0 w-full sm:w-80 z-30 flex flex-col cmd-bg border-l border-dim shadow-2xl shadow-black/30 backdrop-blur-2xl"
+            className="absolute right-0 top-0 bottom-0 w-full sm:w-80 z-60 flex flex-col cmd-bg border-l border-dim shadow-2xl shadow-black/30 backdrop-blur-2xl"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-dim shrink-0">
@@ -290,7 +297,7 @@ export default function AiPanel({ isOpen, onClose, note, editor, initialMode = '
                         className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold text-white bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 transition-all"
                       >
                         {replaced ? <Check size={12} /> : null}
-                        {replaced ? 'Replaced!' : 'Replace Note'}
+                        {replaced ? 'Replaced!' : initialSelectionRange ? 'Replace Selection' : 'Replace Note'}
                       </button>
                       <button
                         onClick={handleInsertBelow}

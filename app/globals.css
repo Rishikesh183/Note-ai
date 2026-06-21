@@ -275,6 +275,10 @@ textarea      { resize: none; }
   font-style: italic;
 }
 
+/* Hide scrollbar for tab bar */
+.scrollbar-hide { scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
 /* AI autocomplete ghost text */
 .autocomplete-ghost {
   color: var(--text-muted);

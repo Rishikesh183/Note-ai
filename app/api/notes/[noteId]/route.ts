@@ -27,7 +27,7 @@ export async function PATCH(
   }
 
   /* Only allow safe fields */
-  const allowed = ['title', 'content', 'favorite', 'category', 'public'] as const
+  const allowed = ['title', 'content', 'tabs', 'favorite', 'category', 'public'] as const
   const patch: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in body) patch[key] = body[key]
@@ -37,8 +37,13 @@ export async function PATCH(
     return Response.json({ ok: true })
   }
 
-  /* Auto-generate preview — strip HTML tags */
-  if (typeof patch.content === 'string') {
+  /* When tabs are saved, sync root content + preview from tab[0] for backward compat */
+  if (Array.isArray(patch.tabs) && patch.tabs.length > 0) {
+    const firstContent = (patch.tabs[0] as { content?: string }).content ?? ''
+    patch.content = firstContent
+    patch.preview = firstContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)
+  } else if (typeof patch.content === 'string') {
+    /* Auto-generate preview — strip HTML tags */
     patch.preview = (patch.content as string)
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')

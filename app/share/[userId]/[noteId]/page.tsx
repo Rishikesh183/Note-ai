@@ -31,7 +31,7 @@ export default async function SharePage({ params }: Props) {
   }) ?? ''
 
   return (
-    <div className="min-h-screen app-bg">
+    <div className="min-h-screen app-bg overflow-y-auto" style={{ height: '100dvh' }}>
       {/* Nav bar */}
       <header className="sticky top-0 z-10 panel-bg panel-border-b backdrop-blur-xl">
         <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">

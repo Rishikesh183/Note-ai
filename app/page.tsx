@@ -23,16 +23,12 @@ export default function Page() {
 
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
   const selectedNote = notes.find((n) => n.id === selectedNoteId) ?? notes[0] ?? null
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const isMobile = useMobile()
+  const [sidebarOpen, setSidebarOpen] = useState(() => !isMobile)
   const [activeNav, setActiveNav] = useState<NavItem>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [mobileView, setMobileView] = useState<'list' | 'editor'>('list')
-  const isMobile = useMobile()
-
-  useEffect(() => {
-    if (isMobile) setSidebarOpen(false)
-  }, [isMobile])
 
   const handleNewNote = useCallback(async () => {
     const note = await createNote()

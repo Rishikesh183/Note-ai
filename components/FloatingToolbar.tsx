@@ -44,7 +44,7 @@ function ToolBtn({
       >
         <Icon size={13} strokeWidth={2} />
       </button>
-      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 rounded-lg cmd-bg border border-dim text-[10px] t-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-200 shadow-lg">
+      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 rounded-lg cmd-bg border border-dim text-[10px] t-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-9999 shadow-lg">
         {label}
       </div>
     </div>
@@ -60,7 +60,9 @@ function ColorPopover({
   onSelect: (v: string | null) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
   const ref = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -71,21 +73,34 @@ function ColorPopover({
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
+  const handleOpen = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 })
+    }
+    setOpen((o) => !o)
+  }
+
   return (
     <div ref={ref} className="relative group">
       <button
+        ref={btnRef}
         type="button"
-        onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o) }}
+        onMouseDown={handleOpen}
         className="w-8 h-7 flex items-center justify-center rounded-lg app-icon-btn active:scale-95"
         title={title}
       >
         <Icon size={13} strokeWidth={2} />
       </button>
-      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 rounded-lg cmd-bg border border-dim text-[10px] t-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-400 shadow-lg">
+      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 rounded-lg cmd-bg border border-dim text-[10px] t-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-9999 shadow-lg">
         {title}
       </div>
       {open && (
-        <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 p-2 rounded-xl cmd-bg border border-dim shadow-xl z-200 flex flex-wrap gap-1.5 w-34">
+        <div
+          className="fixed p-2 rounded-xl cmd-bg border border-dim shadow-xl z-9999 flex flex-wrap gap-1.5 w-34"
+          style={{ top: pos.top, left: pos.left, transform: 'translateX(-50%)' }}
+        >
           {colors.map(({ label, value }) => (
             <button
               key={label}
@@ -116,10 +131,10 @@ export default function FloatingToolbar({ editor }: { editor: Editor | null }) {
       initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1, duration: 0.2 }}
-      className="flex flex-col items-center gap-1.5 py-2 shrink-0"
+      className="flex flex-col items-center gap-1.5 py-2 shrink-0 z-50 relative"
     >
       <div className="w-full px-2 sm:px-6 flex justify-center">
-      <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-2xl surface border border-dim backdrop-blur-xl min-w-max">
+      <div className="flex items-center gap-0.5 px-2 py-1.5 rounded-2xl cmd-bg border border-dim shadow-md min-w-max">
         {/* Text formatting */}
         <ToolBtn onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} icon={Heading1} label="Heading 1" />
         <ToolBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} icon={Bold} label="Bold  ⌘B" />
@@ -166,7 +181,7 @@ export default function FloatingToolbar({ editor }: { editor: Editor | null }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.15 }}
-          className="flex items-center gap-0.5 px-2 py-1 rounded-xl surface border border-dim backdrop-blur-xl"
+          className="flex items-center gap-0.5 px-2 py-1 rounded-xl cmd-bg border border-dim shadow-md"
         >
           <span className="text-[9px] t-muted font-mono uppercase tracking-widest px-1 mr-0.5">Rows</span>
           <ToolBtn onClick={() => editor.chain().focus().addRowBefore().run()} icon={ArrowUp}    label="Add Row Above" />

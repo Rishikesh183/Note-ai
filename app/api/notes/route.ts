@@ -9,14 +9,22 @@ function userNotes(userId: string) {
   return adminDb.collection('users').doc(userId).collection('notes')
 }
 
+function migrateTabs(data: FirebaseFirestore.DocumentData): { id: string; name: string; content: string }[] {
+  if (Array.isArray(data.tabs) && data.tabs.length > 0) return data.tabs
+  // Migrate legacy note: wrap root content into first tab
+  return [{ id: 'tab_1', name: 'Main', content: data.content ?? '' }]
+}
+
 function formatNote(id: string, data: FirebaseFirestore.DocumentData) {
   const updatedAt = data.updatedAt?.toDate?.() ?? new Date()
   const createdAt = data.createdAt?.toDate?.() ?? new Date()
-  const content   = data.content ?? ''
+  const tabs      = migrateTabs(data)
+  const content   = tabs[0]?.content ?? ''
   return {
     id,
     title:     data.title    ?? 'Untitled',
     content,
+    tabs,
     preview:   data.preview  ?? content.replace(/[#*_`[\]]/g, '').slice(0, 120),
     favorite:  data.favorite ?? false,
     public:    data.public   ?? false,
@@ -52,6 +60,7 @@ export async function POST(_req: NextRequest) {
     const ref = await userNotes(userId).add({
       title:     'Untitled Note',
       content:   '',
+      tabs:      [{ id: 'tab_1', name: 'Main', content: '' }],
       preview:   'Start writing...',
       favorite:  false,
       category:  'all',
